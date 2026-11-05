@@ -1,15 +1,20 @@
-from django.shortcuts import render
-
-# Create your views here.
 from django.db.models import Max, Prefetch
+from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
 from .models import Board, Card, Column
 from .serializers import (
-    BoardDetailSerializer, BoardSerializer, CardSerializer, ColumnSerializer,
+    BoardDetailSerializer,
+    BoardSerializer,
+    CardSerializer,
+    ColumnSerializer,
+    MoveCardSerializer,
 )
+from .services import POSITION_GAP, move_card
 
-POSITION_GAP = 1000
+
 
 
 def next_position(queryset):
@@ -70,3 +75,19 @@ class CardViewSet(
             created_by=self.request.user,
             position=next_position(column.cards.all()),
         )
+    
+    @extend_schema(request=MoveCardSerializer, responses=CardSerializer)
+    @action(detail=True, methods=["post"])
+    def move(self, request, pk=None):
+        card = self.get_object()  # owner-scoped queryset, so someone else's card is a 404
+        serializer = MoveCardSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        moved = move_card(
+            request.user,
+            card.pk,
+            data["column_id"],
+            data.get("before_id"),
+            data.get("after_id"),
+        )
+        return Response(CardSerializer(moved, context=self.get_serializer_context()).data)

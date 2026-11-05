@@ -91,3 +91,8 @@ class BoardDetailSerializer(BoardSerializer):
 
     class Meta(BoardSerializer.Meta):
         fields = BoardSerializer.Meta.fields + ("columns",)
+
+class MoveCardSerializer(serializers.Serializer):
+    column_id = serializers.IntegerField()
+    before_id = serializers.IntegerField(required=False, allow_null=True)
+    after_id = serializers.IntegerField(required=False, allow_null=True)
