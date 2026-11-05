@@ -109,3 +109,13 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+:root {
+  font-family: system-ui, sans-serif;
+  color-scheme: light;
+  color: #172b4d;
+  background: #f4f5f7;
+}
+
+body {
+  margin: 0;
+}
