@@ -1,11 +1,11 @@
 import { Link, useParams } from "react-router-dom";
-import { BoardColumn } from "../components/BoardColumn";
+import { BoardView } from "../components/BoardView";
 import { useBoard } from "../hooks/useBoard";
 import "../board.css";
 
 export function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
-  const { state, retry } = useBoard(boardId);
+  const { state, retry, updateBoard } = useBoard(boardId);
 
   return (
     <main className="board-page">
@@ -27,15 +27,7 @@ export function BoardPage() {
       {state.kind === "ready" && (
         <>
           <h1>{state.board.name}</h1>
-          {state.board.columns.length === 0 ? (
-            <p className="empty">This board has no columns yet. Adding columns comes on Day 10.</p>
-          ) : (
-            <div className="board-columns">
-              {state.board.columns.map((column) => (
-                <BoardColumn key={column.id} column={column} />
-              ))}
-            </div>
-          )}
+          <BoardView board={state.board} updateBoard={updateBoard} />
         </>
       )}
     </main>

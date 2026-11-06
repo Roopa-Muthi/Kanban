@@ -48,3 +48,10 @@ export interface Column {
 export interface BoardDetail extends Board {
   columns: Column[];
 }
+// What POST/PATCH /columns returns (no cards)
+export interface ColumnRecord {
+  id: number;
+  board: number;
+  title: string;
+  position: number;
+}

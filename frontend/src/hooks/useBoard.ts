@@ -36,6 +36,9 @@ export function useBoard(boardId: string | undefined) {
     setState({ kind: "loading" });
     setAttempt((a) => a + 1);
   }, []);
+  const updateBoard = useCallback((fn: (board: BoardDetail) => BoardDetail) => {
+    setState((s) => (s.kind === "ready" ? { kind: "ready", board: fn(s.board) } : s));
+  }, []);
 
-  return { state, retry };
+  return { state, retry, updateBoard };
 }

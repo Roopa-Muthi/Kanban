@@ -92,3 +92,86 @@
 .error {
   color: crimson;
 }
+.editable {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.column-title {
+  font-size: 1rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #0b5fff;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+.link-btn.danger {
+  color: #c9372c;
+}
+
+.column-header {
+  gap: 8px;
+}
+
+.column-header .editable {
+  flex: 1;
+}
+
+.edit-form,
+.add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.edit-form input,
+.add-form input {
+  padding: 6px 8px;
+  border: 1px solid #c1c7d0;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.form-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.add-btn {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 8px;
+  color: #5e6c84;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.add-btn:hover {
+  background: rgba(9, 30, 66, 0.08);
+}
+
+.add-column {
+  flex: 0 0 280px;
+  background: rgba(9, 30, 66, 0.06);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.card .link-btn.danger {
+  margin-top: 6px;
+}
