@@ -114,7 +114,9 @@ export function BoardsPage() {
               style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0" }}
             >
               <Link to={`/boards/${board.id}`}>{board.name}</Link>
-              <button onClick={() => void handleDelete(board)}>Delete</button>
+              <button onClick={() => void handleDelete(board)} aria-label={`Delete board ${board.name}`}>
+  Delete
+</button>
             </li>
           ))}
         </ul>

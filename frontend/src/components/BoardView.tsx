@@ -17,18 +17,10 @@ import type {
   DragOverEvent,
   DragStartEvent,
 } from "@dnd-kit/core";
-import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { api, formatError } from "../api";
 import * as ops from "../boardOps";
-import {
-  buildLayout,
-  cardKey,
-  columnOfOver,
-  findColumnOf,
-  parseCardKey,
-  parseColumnKey,
-  sameOrder,
-} from "../dnd";
+import { buildLayout, cardKey, parseCardKey, parseColumnKey, planMove, previewLayout } from "../dnd";
 import type { Layout } from "../dnd";
 import type { BoardDetail, Card, Column, ColumnRecord } from "../types";
 import { AddForm } from "./AddForm";
@@ -195,22 +187,10 @@ export function BoardView({ board, updateBoard, onResync }: Props) {
     if (!drag || !over) return;
     const cardId = parseCardKey(active.id);
     if (cardId === null) return;
-
-    const from = findColumnOf(drag.layout, cardId);
-    const to = columnOfOver(drag.layout, over.id);
-    if (from === null || to === null || from === to) return;
-
-    const source = (drag.layout[from] ?? []).filter((id) => id !== cardId);
-    const target = [...(drag.layout[to] ?? [])];
-    const overCardId = parseCardKey(over.id);
-    let index = target.length; // over the column itself: append
-    if (overCardId !== null) {
-      const translated = active.rect.current.translated;
-      const below = translated !== null && translated.top > over.rect.top + over.rect.height / 2;
-      index = target.indexOf(overCardId) + (below ? 1 : 0);
-    }
-    target.splice(index, 0, cardId);
-    setDrag({ ...drag, layout: { ...drag.layout, [from]: source, [to]: target } });
+    const translated = active.rect.current.translated;
+    const below = translated !== null && translated.top > over.rect.top + over.rect.height / 2;
+    const next = previewLayout(drag.layout, cardId, over.id, below);
+    if (next) setDrag({ ...drag, layout: next });
   }
 
   function handleDragEnd({ active, over }: DragEndEvent) {
@@ -220,26 +200,15 @@ export function BoardView({ board, updateBoard, onResync }: Props) {
 
     const cardId = parseCardKey(active.id);
     if (cardId === null) return;
-    const columnId = findColumnOf(current.layout, cardId);
-    if (columnId === null) return;
+    const plan = planMove(current.start, current.layout, cardId, over.id);
+    if (!plan) return;
 
-    let ids = current.layout[columnId] ?? [];
-    const overCardId = parseCardKey(over.id);
-    if (overCardId !== null && overCardId !== cardId && ids.includes(overCardId)) {
-      ids = arrayMove(ids, ids.indexOf(cardId), ids.indexOf(overCardId));
-    }
-
-    // Dropped back where it started: no request.
-    const startColumn = findColumnOf(current.start, cardId);
-    if (startColumn === columnId && sameOrder(current.start[columnId] ?? [], ids)) return;
-
-    const index = ids.indexOf(cardId);
-    updateBoard((b) => ops.placeCard(b, cardId, columnId, ids)); // optimistic, before any await
+    updateBoard((b) => ops.placeCard(b, cardId, plan.columnId, plan.ids)); // optimistic, before any await
     enqueueMove({
       cardId,
-      columnId,
-      beforeId: ids[index - 1] ?? null,
-      afterId: ids[index + 1] ?? null,
+      columnId: plan.columnId,
+      beforeId: plan.beforeId,
+      afterId: plan.afterId,
     });
   }
 

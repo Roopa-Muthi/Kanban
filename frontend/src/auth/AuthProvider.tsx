@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { authApi, setSessionExpiredHandler, tokenStore } from "../api";
+import { ApiError, authApi, setSessionExpiredHandler, tokenStore } from "../api";
 import type { RegisterPayload, User } from "../types";
 import { AuthContext } from "./context";
 import type { AuthContextValue } from "./context";
+
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -23,7 +24,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((u) => {
         if (!cancelled) setUser(u);
       })
-      .catch(() => tokenStore.clear())
+            .catch((err: unknown) => {
+        // request() already clears the tokens when the session is really dead (refresh failed).
+        // A network error or a 5xx shouldn't throw a valid session away.
+        if (err instanceof ApiError && err.status === 401) tokenStore.clear();
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
