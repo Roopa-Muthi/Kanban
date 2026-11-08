@@ -210,3 +210,15 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+.card-overlay {
+  box-shadow: 0 8px 16px rgba(9, 30, 66, 0.3);
+  cursor: grabbing;
+  list-style: none;
+}
+
+.saving {
+  min-height: 1.2em;
+  margin: 0 0 4px;
+  font-size: 0.8rem;
+  color: #5e6c84;
+}

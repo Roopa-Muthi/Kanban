@@ -5,7 +5,7 @@ import "../board.css";
 
 export function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
-  const { state, retry, updateBoard } = useBoard(boardId);
+  const { state, retry, updateBoard, refresh } = useBoard(boardId);
 
   return (
     <main className="board-page">
@@ -27,7 +27,7 @@ export function BoardPage() {
       {state.kind === "ready" && (
         <>
           <h1>{state.board.name}</h1>
-          <BoardView board={state.board} updateBoard={updateBoard} />
+            <BoardView board={state.board} updateBoard={updateBoard} onResync={refresh} />
         </>
       )}
     </main>

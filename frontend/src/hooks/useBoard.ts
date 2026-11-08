@@ -39,6 +39,12 @@ export function useBoard(boardId: string | undefined) {
   const updateBoard = useCallback((fn: (board: BoardDetail) => BoardDetail) => {
     setState((s) => (s.kind === "ready" ? { kind: "ready", board: fn(s.board) } : s));
   }, []);
+    // Re-fetches the board without showing the loading screen. Throws if the request fails.
+  const refresh = useCallback(async () => {
+    if (!boardId) return;
+    const board = await api.get<BoardDetail>(`/boards/${boardId}`);
+    setState({ kind: "ready", board });
+  }, [boardId]);
 
-  return { state, retry, updateBoard };
+  return { state, retry, updateBoard, refresh };
 }

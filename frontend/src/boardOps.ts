@@ -48,17 +48,41 @@ export function removeCard(board: BoardDetail, cardId: number): BoardDetail {
     })),
   };
 }
-// Reorders one column's cards to match orderedIds. Cards not in the list keep their
-// relative order at the end. Used for the optimistic update and for rollback.
-export function setCardOrder(board: BoardDetail, columnId: number, orderedIds: number[]): BoardDetail {
+// Moves a card into a column and orders that column to match orderedIds.
+// Works for same-column and cross-column moves.
+export function placeCard(
+  board: BoardDetail,
+  cardId: number,
+  columnId: number,
+  orderedIds: number[],
+): BoardDetail {
+  const moving = board.columns.flatMap((c) => c.cards).find((c) => c.id === cardId);
+  if (!moving) return board;
+  const placed: Card = { ...moving, column: columnId };
   const rank = new Map(orderedIds.map((id, i): [number, number] => [id, i]));
   const rankOf = (id: number) => rank.get(id) ?? Number.MAX_SAFE_INTEGER;
   return {
     ...board,
-    columns: board.columns.map((c) =>
-      c.id === columnId
-        ? { ...c, cards: [...c.cards].sort((a, b) => rankOf(a.id) - rankOf(b.id)) }
-        : c,
-    ),
+    columns: board.columns.map((c) => {
+      const others = c.cards.filter((x) => x.id !== cardId);
+      if (c.id !== columnId) return { ...c, cards: others };
+      return { ...c, cards: [...others, placed].sort((a, b) => rankOf(a.id) - rankOf(b.id)) };
+    }),
+  };
+}
+
+// Copies only the server-owned fields from a move response. It deliberately leaves the
+// card's column and order alone, because a later queued move may already have changed them.
+export function syncCard(board: BoardDetail, server: Card): BoardDetail {
+  return {
+    ...board,
+    columns: board.columns.map((c) => ({
+      ...c,
+      cards: c.cards.map((x) =>
+        x.id === server.id
+          ? { ...x, position: server.position, version: server.version, updated_at: server.updated_at }
+          : x,
+      ),
+    })),
   };
 }

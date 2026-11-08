@@ -1,5 +1,6 @@
+import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { cardKey } from "../dnd";
+import { cardKey, columnKey } from "../dnd";
 import type { Card, Column } from "../types";
 import { AddForm } from "./AddForm";
 import { CardItem } from "./CardItem";
@@ -24,8 +25,11 @@ export function BoardColumn({
   onRenameCard,
   onDeleteCard,
 }: Props) {
+  // Makes the whole column a drop target, so an empty column can receive a card.
+  const { setNodeRef } = useDroppable({ id: columnKey(column.id) });
+
   return (
-    <section className="column" aria-label={column.title}>
+    <section ref={setNodeRef} className="column" aria-label={column.title}>
       <header className="column-header">
         <EditableText
           value={column.title}
