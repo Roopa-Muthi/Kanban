@@ -175,3 +175,38 @@
 .card .link-btn.danger {
   margin-top: 6px;
 }
+.card-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.card-row > .editable,
+.card-row > .edit-form {
+  flex: 1;
+  min-width: 0;
+}
+
+.drag-handle {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  padding: 0 2px;
+  line-height: 1.4;
+  color: #8993a4;
+  cursor: grab;
+  touch-action: none; /* lets touch screens drag instead of scroll */
+}
+
+.drag-handle:hover {
+  color: #172b4d;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-handle[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

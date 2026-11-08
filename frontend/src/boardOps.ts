@@ -48,3 +48,17 @@ export function removeCard(board: BoardDetail, cardId: number): BoardDetail {
     })),
   };
 }
+// Reorders one column's cards to match orderedIds. Cards not in the list keep their
+// relative order at the end. Used for the optimistic update and for rollback.
+export function setCardOrder(board: BoardDetail, columnId: number, orderedIds: number[]): BoardDetail {
+  const rank = new Map(orderedIds.map((id, i): [number, number] => [id, i]));
+  const rankOf = (id: number) => rank.get(id) ?? Number.MAX_SAFE_INTEGER;
+  return {
+    ...board,
+    columns: board.columns.map((c) =>
+      c.id === columnId
+        ? { ...c, cards: [...c.cards].sort((a, b) => rankOf(a.id) - rankOf(b.id)) }
+        : c,
+    ),
+  };
+}

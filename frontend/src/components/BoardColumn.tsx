@@ -1,3 +1,5 @@
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { cardKey } from "../dnd";
 import type { Card, Column } from "../types";
 import { AddForm } from "./AddForm";
 import { CardItem } from "./CardItem";
@@ -5,6 +7,7 @@ import { EditableText } from "./EditableText";
 
 interface Props {
   column: Column;
+  dragDisabled: boolean;
   onRenameColumn: (columnId: number, title: string) => Promise<void>;
   onDeleteColumn: (column: Column) => void;
   onAddCard: (columnId: number, title: string) => Promise<void>;
@@ -14,6 +17,7 @@ interface Props {
 
 export function BoardColumn({
   column,
+  dragDisabled,
   onRenameColumn,
   onDeleteColumn,
   onAddCard,
@@ -42,20 +46,26 @@ export function BoardColumn({
         </button>
       </header>
 
-      {column.cards.length === 0 ? (
-        <p className="empty">No cards yet</p>
-      ) : (
-        <ul className="card-list">
-          {column.cards.map((card) => (
-            <CardItem
-              key={card.id}
-              card={card}
-              onRename={(title) => onRenameCard(card.id, title)}
-              onDelete={() => onDeleteCard(card)}
-            />
-          ))}
-        </ul>
-      )}
+      <SortableContext
+        items={column.cards.map((c) => cardKey(c.id))}
+        strategy={verticalListSortingStrategy}
+      >
+        {column.cards.length === 0 ? (
+          <p className="empty">No cards yet</p>
+        ) : (
+          <ul className="card-list">
+            {column.cards.map((card) => (
+              <CardItem
+                key={card.id}
+                card={card}
+                dragDisabled={dragDisabled}
+                onRename={(title) => onRenameCard(card.id, title)}
+                onDelete={() => onDeleteCard(card)}
+              />
+            ))}
+          </ul>
+        )}
+      </SortableContext>
 
       <AddForm
         label="Add a card"
