@@ -115,3 +115,35 @@ describe("immutability", () => {
     expect(board).toEqual(snapshot);
   });
 });
+describe("mergeCardFields", () => {
+  it("copies content fields and the version but keeps local placement", () => {
+    const server = makeCard(11, 2, {
+      title: "New title",
+      description: "New text",
+      due_date: "2026-12-01",
+      assignee: 1,
+      version: 4,
+      position: 9999,
+      updated_at: "2026-03-03T00:00:00Z",
+    });
+    const next = ops.mergeCardFields(sample(), server);
+    const card = findCard(next, 11);
+    expect(card).toMatchObject({
+      title: "New title",
+      description: "New text",
+      due_date: "2026-12-01",
+      assignee: 1,
+      version: 4,
+      updated_at: "2026-03-03T00:00:00Z",
+    });
+    expect(card?.column).toBe(1);
+    expect(card?.position).toBe(11000);
+    expect(ids(next, 1)).toEqual([10, 11, 12]);
+  });
+
+  it("leaves the board alone when the card isn't there", () => {
+    const next = ops.mergeCardFields(sample(), makeCard(999, 1, { title: "Ghost" }));
+    expect(findCard(next, 999)).toBeUndefined();
+    expect(ids(next, 1)).toEqual([10, 11, 12]);
+  });
+});

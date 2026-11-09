@@ -55,3 +55,10 @@ export interface ColumnRecord {
   title: string;
   position: number;
 }
+// The fields the card dialog can change; PATCH accepts any subset.
+export interface CardChanges {
+  title?: string;
+  description?: string;
+  due_date?: string | null;
+  assignee?: number | null;
+}

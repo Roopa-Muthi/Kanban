@@ -86,3 +86,27 @@ export function syncCard(board: BoardDetail, server: Card): BoardDetail {
     })),
   };
 }
+// Copies the content fields a PATCH can change, plus the server-owned version and timestamp.
+// Unlike replaceCard it leaves column and position alone, so an edit that finishes while a
+// move is still saving can't pull the card back to its old place.
+export function mergeCardFields(board: BoardDetail, server: Card): BoardDetail {
+  return {
+    ...board,
+    columns: board.columns.map((c) => ({
+      ...c,
+      cards: c.cards.map((x) =>
+        x.id === server.id
+          ? {
+              ...x,
+              title: server.title,
+              description: server.description,
+              due_date: server.due_date,
+              assignee: server.assignee,
+              version: server.version,
+              updated_at: server.updated_at,
+            }
+          : x,
+      ),
+    })),
+  };
+}

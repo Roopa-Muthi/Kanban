@@ -13,6 +13,7 @@ interface Props {
   onDeleteColumn: (column: Column) => void;
   onAddCard: (columnId: number, title: string) => Promise<void>;
   onRenameCard: (cardId: number, title: string) => Promise<void>;
+  onOpenCard: (card: Card) => void;
   onDeleteCard: (card: Card) => void;
 }
 
@@ -23,6 +24,7 @@ export function BoardColumn({
   onDeleteColumn,
   onAddCard,
   onRenameCard,
+  onOpenCard,
   onDeleteCard,
 }: Props) {
   // Makes the whole column a drop target, so an empty column can receive a card.
@@ -64,6 +66,7 @@ export function BoardColumn({
                 card={card}
                 dragDisabled={dragDisabled}
                 onRename={(title) => onRenameCard(card.id, title)}
+                onOpen={() => onOpenCard(card)}
                 onDelete={() => onDeleteCard(card)}
               />
             ))}

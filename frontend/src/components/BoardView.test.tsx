@@ -194,3 +194,29 @@ describe("BoardView columns", () => {
     expect(api.post).toHaveBeenCalledWith("/columns", { board: 1, title: "Review" });
   });
 });
+vi.mock("../auth/useAuth", () => ({
+  useAuth: () => ({ user: { id: 1, username: "alice", email: "alice@example.com" } }),
+}));
+describe("BoardView card details", () => {
+  it("opens the details dialog for a card", async () => {
+    const { user } = setup();
+    await user.click(screen.getByRole("button", { name: "Open details for Write README" }));
+    const dialog = screen.getByRole("dialog", { name: "Card details" });
+    expect(within(dialog).getByLabelText("Title")).toHaveValue("Write README");
+  });
+
+  it("saves details and shows them on the card", async () => {
+    const { user } = setup();
+    vi.mocked(api.patch).mockResolvedValueOnce(
+      makeCard(10, 1, { title: "Write README", description: "Add a screenshot.", version: 2 }),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open details for Write README" }));
+    await user.type(screen.getByLabelText("Description"), "Add a screenshot.");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(api.patch).toHaveBeenCalledWith("/cards/10", { description: "Add a screenshot." });
+    expect(within(column("To do")).getByText("Add a screenshot.")).toBeInTheDocument();
+  });
+});

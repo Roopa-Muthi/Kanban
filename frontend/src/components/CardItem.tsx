@@ -21,10 +21,11 @@ interface Props {
   card: Card;
   dragDisabled: boolean;
   onRename: (title: string) => Promise<void>;
+  onOpen: () => void;
   onDelete: () => void;
 }
 
-export function CardItem({ card, dragDisabled, onRename, onDelete }: Props) {
+export function CardItem({ card, dragDisabled, onRename, onOpen, onDelete }: Props) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({ id: cardKey(card.id), disabled: dragDisabled });
 
@@ -68,14 +69,24 @@ export function CardItem({ card, dragDisabled, onRename, onDelete }: Props) {
           {overdue && " (overdue)"}
         </p>
       )}
-      <button
-        type="button"
-        className="link-btn danger"
-        onClick={onDelete}
-        aria-label={`Delete ${card.title}`}
-      >
-        Delete
-      </button>
+      <div className="card-actions">
+        <button
+          type="button"
+          className="link-btn"
+          onClick={onOpen}
+          aria-label={`Open details for ${card.title}`}
+        >
+          Details
+        </button>
+        <button
+          type="button"
+          className="link-btn danger"
+          onClick={onDelete}
+          aria-label={`Delete ${card.title}`}
+        >
+          Delete
+        </button>
+      </div>
     </li>
   );
 }

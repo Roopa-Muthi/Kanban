@@ -22,9 +22,10 @@ import { api, formatError } from "../api";
 import * as ops from "../boardOps";
 import { buildLayout, cardKey, parseCardKey, parseColumnKey, planMove, previewLayout } from "../dnd";
 import type { Layout } from "../dnd";
-import type { BoardDetail, Card, Column, ColumnRecord } from "../types";
+import type { BoardDetail, Card, CardChanges, Column, ColumnRecord } from "../types";
 import { AddForm } from "./AddForm";
 import { BoardColumn } from "./BoardColumn";
+import { CardModal } from "./CardModal";
 import { CardPreview } from "./CardPreview";
 
 interface Props {
@@ -49,6 +50,7 @@ interface MoveRequest {
 export function BoardView({ board, updateBoard, onResync }: Props) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [openCardId, setOpenCardId] = useState<number | null>(null);
   const [pending, setPending] = useState(0);
   const [resyncing, setResyncing] = useState(false);
   const queueRef = useRef<Promise<void>>(Promise.resolve());
@@ -128,7 +130,13 @@ export function BoardView({ board, updateBoard, onResync }: Props) {
 
   async function renameCard(cardId: number, title: string) {
     const card = await api.patch<Card>(`/cards/${cardId}`, { title });
-    updateBoard((b) => ops.replaceCard(b, card));
+    updateBoard((b) => ops.mergeCardFields(b, card));
+  }
+
+  // Throws on failure, so the dialog that triggered it shows the error and stays open.
+  async function saveCardDetails(cardId: number, changes: CardChanges) {
+    const card = await api.patch<Card>(`/cards/${cardId}`, changes);
+    updateBoard((b) => ops.mergeCardFields(b, card));
   }
 
   function deleteCard(card: Card) {
@@ -229,6 +237,8 @@ export function BoardView({ board, updateBoard, onResync }: Props) {
       }))
     : board.columns;
   const draggedCard = drag ? cardsById.get(drag.cardId) : undefined;
+  // The dialog reads the saved board, never the drag preview.
+  const openCard = openCardId === null ? undefined : cardsById.get(openCardId);
 
   return (
     <>
@@ -264,6 +274,7 @@ export function BoardView({ board, updateBoard, onResync }: Props) {
               onDeleteColumn={deleteColumn}
               onAddCard={addCard}
               onRenameCard={renameCard}
+              onOpenCard={(card) => setOpenCardId(card.id)}
               onDeleteCard={deleteCard}
             />
           ))}
@@ -279,6 +290,15 @@ export function BoardView({ board, updateBoard, onResync }: Props) {
         </div>
         <DragOverlay>{draggedCard ? <CardPreview card={draggedCard} /> : null}</DragOverlay>
       </DndContext>
+
+      {openCard && (
+        <CardModal
+          key={openCard.id}
+          card={openCard}
+          onSave={(changes) => saveCardDetails(openCard.id, changes)}
+          onClose={() => setOpenCardId(null)}
+        />
+      )}
     </>
   );
 }

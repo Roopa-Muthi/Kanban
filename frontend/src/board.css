@@ -172,9 +172,6 @@
   padding: 8px;
 }
 
-.card .link-btn.danger {
-  margin-top: 6px;
-}
 .card-row {
   display: flex;
   align-items: flex-start;
@@ -221,4 +218,71 @@
   margin: 0 0 4px;
   font-size: 0.8rem;
   color: #5e6c84;
+}
+.card-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.modal {
+  border: none;
+  border-radius: 8px;
+  padding: 0;
+  width: min(480px, calc(100vw - 32px));
+  box-shadow: 0 12px 32px rgba(9, 30, 66, 0.35);
+  color: inherit;
+}
+
+.modal::backdrop {
+  background: rgba(9, 30, 66, 0.5);
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.modal-body h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.field input,
+.field textarea,
+.field select {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid #c1c7d0;
+  border-radius: 4px;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hint {
+  align-self: flex-end;
+  font-size: 0.75rem;
+  color: #6b778c;
 }
