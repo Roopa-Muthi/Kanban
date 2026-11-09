@@ -29,6 +29,9 @@ class SelfOnlyAssigneeField(serializers.PrimaryKeyRelatedField):
 class CardSerializer(serializers.ModelSerializer):
     column = OwnColumnField()
     assignee = SelfOnlyAssigneeField(required=False, allow_null=True)
+    description = serializers.CharField(
+        max_length=5000, allow_blank=True, required=False, trim_whitespace=False
+    )
 
     class Meta:
         model = Card
