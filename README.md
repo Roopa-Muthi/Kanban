@@ -2,7 +2,7 @@
 
 A full-stack Kanban board: Django REST Framework + PostgreSQL backend, React + TypeScript frontend.
 
-**Live demo:**  ·  **Demo login:** 
+
 
 ## Run it locally
 
