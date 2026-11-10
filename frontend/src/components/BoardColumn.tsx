@@ -1,5 +1,6 @@
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import type { FocusEvent, KeyboardEvent } from "react";
 import { cardKey, columnKey } from "../dnd";
 import type { Card, Column } from "../types";
 import { AddForm } from "./AddForm";
@@ -9,23 +10,29 @@ import { EditableText } from "./EditableText";
 interface Props {
   column: Column;
   dragDisabled: boolean;
+  grabbedCardId: number | null;
   onRenameColumn: (columnId: number, title: string) => Promise<void>;
   onDeleteColumn: (column: Column) => void;
   onAddCard: (columnId: number, title: string) => Promise<void>;
   onRenameCard: (cardId: number, title: string) => Promise<void>;
   onOpenCard: (card: Card) => void;
   onDeleteCard: (card: Card) => void;
+  onHandleKeyDown: (card: Card, e: KeyboardEvent<HTMLButtonElement>) => void;
+  onHandleBlur: (card: Card, e: FocusEvent<HTMLButtonElement>) => void;
 }
 
 export function BoardColumn({
   column,
   dragDisabled,
+  grabbedCardId,
   onRenameColumn,
   onDeleteColumn,
   onAddCard,
   onRenameCard,
   onOpenCard,
   onDeleteCard,
+  onHandleKeyDown,
+  onHandleBlur,
 }: Props) {
   // Makes the whole column a drop target, so an empty column can receive a card.
   const { setNodeRef } = useDroppable({ id: columnKey(column.id) });
@@ -65,9 +72,12 @@ export function BoardColumn({
                 key={card.id}
                 card={card}
                 dragDisabled={dragDisabled}
+                grabbed={card.id === grabbedCardId}
                 onRename={(title) => onRenameCard(card.id, title)}
                 onOpen={() => onOpenCard(card)}
                 onDelete={() => onDeleteCard(card)}
+                onHandleKeyDown={(e) => onHandleKeyDown(card, e)}
+                onHandleBlur={(e) => onHandleBlur(card, e)}
               />
             ))}
           </ul>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError, api } from "../api";
@@ -16,6 +16,10 @@ vi.mock("../api", async (importOriginal) => {
 });
 
 const noResync = () => Promise.resolve();
+const handleNames = (region: HTMLElement) =>
+  within(region)
+    .getAllByRole("button", { name: /^Reorder / })
+    .map((b) => b.getAttribute("aria-label"));
 
 // Holds the board in state, like BoardPage does, so updates show up on screen.
 function Harness({ initial }: { initial: BoardDetail }) {
@@ -218,5 +222,118 @@ describe("BoardView card details", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(api.patch).toHaveBeenCalledWith("/cards/10", { description: "Add a screenshot." });
     expect(within(column("To do")).getByText("Add a screenshot.")).toBeInTheDocument();
+  });
+});
+describe("BoardView keyboard moves", () => {
+  const focusHandle = (title: string) =>
+    screen.getByRole("button", { name: `Reorder ${title}` }).focus();
+
+  it("moves a card down within its column and saves it on drop", async () => {
+    const { user } = setup();
+    vi.mocked(api.post).mockResolvedValueOnce(
+      makeCard(10, 1, { title: "Write README", position: 2500, version: 2 }),
+    );
+    focusHandle("Write README");
+
+    await user.keyboard(" ");
+    expect(screen.getByText(/Picked up Write README, position 1 of 3 in To do/)).toBeInTheDocument();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByText("Moved to position 2 of 3 in To do.")).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled(); // nothing is sent until the drop
+    await user.keyboard(" ");
+
+    expect(handleNames(column("To do"))).toEqual([
+      "Reorder Add seed command",
+      "Reorder Write README",
+      "Reorder Deploy",
+    ]);
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith("/cards/10/move", {
+        column_id: 1,
+        before_id: 11,
+        after_id: 12,
+      }),
+    );
+  });
+
+  it("moves a card to another column, keeps focus on it, and saves it", async () => {
+    const { user } = setup();
+    vi.mocked(api.post).mockResolvedValueOnce(makeCard(10, 2, { title: "Write README", version: 2 }));
+    focusHandle("Write README");
+
+    await user.keyboard(" ");
+    await user.keyboard("{ArrowRight}");
+
+    const handle = within(column("Done")).getByRole("button", { name: "Reorder Write README" });
+    expect(handle).toHaveFocus();
+    expect(screen.getByText("Moved to position 1 of 1 in Done.")).toBeInTheDocument();
+    expect(within(column("To do")).queryByText("Write README")).not.toBeInTheDocument();
+
+    await user.keyboard(" ");
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith("/cards/10/move", {
+        column_id: 2,
+        before_id: null,
+        after_id: null,
+      }),
+    );
+    expect(within(column("To do")).queryByText("Write README")).not.toBeInTheDocument();
+  });
+
+  it("cancels with Escape and puts everything back", async () => {
+    const { user } = setup();
+    focusHandle("Write README");
+    await user.keyboard(" ");
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{Escape}");
+
+    expect(handleNames(column("To do"))).toEqual([
+      "Reorder Write README",
+      "Reorder Add seed command",
+      "Reorder Deploy",
+    ]);
+    expect(screen.getByText("Move cancelled.")).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it("says so when a card can't move any further", async () => {
+    const { user } = setup();
+    focusHandle("Write README");
+    await user.keyboard(" ");
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByText("Can't move any further up.")).toBeInTheDocument();
+  });
+
+  it("sends nothing when the card is dropped where it started", async () => {
+    const { user } = setup();
+    focusHandle("Write README");
+    await user.keyboard(" ");
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowUp}");
+    await user.keyboard(" ");
+
+    expect(screen.getByText(/Nothing changed/)).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it("cancels the pick-up when the pointer is pressed elsewhere", async () => {
+    const { user } = setup();
+    focusHandle("Write README");
+    await user.keyboard(" ");
+    await user.keyboard("{ArrowDown}");
+
+    fireEvent.pointerDown(document.body);
+
+    expect(screen.getByText("Move cancelled.")).toBeInTheDocument();
+    expect(handleNames(column("To do"))[0]).toBe("Reorder Write README");
+  });
+
+  it("ignores arrow keys until a card has been picked up", async () => {
+    const { user } = setup();
+    focusHandle("Write README");
+    await user.keyboard("{ArrowDown}");
+
+    expect(handleNames(column("To do"))[0]).toBe("Reorder Write README");
+    expect(screen.queryByText(/Moved to/)).not.toBeInTheDocument();
   });
 });

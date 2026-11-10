@@ -93,3 +93,46 @@ export function planMove(
   const index = ids.indexOf(cardId);
   return { columnId, ids, beforeId: ids[index - 1] ?? null, afterId: ids[index + 1] ?? null };
 }
+export type Step = "up" | "down" | "left" | "right";
+
+// One keyboard step for a picked-up card. Returns the new layout, or null when the card
+// can't move that way. columnIds is the board's columns in left-to-right order.
+export function stepLayout(
+  layout: Layout,
+  columnIds: number[],
+  cardId: number,
+  step: Step,
+): Layout | null {
+  const from = findColumnOf(layout, cardId);
+  if (from === null) return null;
+  const source = layout[from] ?? [];
+  const index = source.indexOf(cardId);
+
+  if (step === "up" || step === "down") {
+    const to = step === "up" ? index - 1 : index + 1;
+    if (to < 0 || to >= source.length) return null;
+    return { ...layout, [from]: arrayMove(source, index, to) };
+  }
+
+  const at = columnIds.indexOf(from);
+  if (at === -1) return null;
+  const target = columnIds[step === "left" ? at - 1 : at + 1];
+  if (target === undefined) return null;
+
+  const targetIds = layout[target] ?? [];
+  const insertAt = Math.min(index, targetIds.length); // same place in the list, or the end
+  return {
+    ...layout,
+    [from]: source.filter((id) => id !== cardId),
+    [target]: [...targetIds.slice(0, insertAt), cardId, ...targetIds.slice(insertAt)],
+  };
+}
+
+// "position 2 of 3 in To do", for announcements.
+export function describePlacement(layout: Layout, columns: Column[], cardId: number): string | null {
+  const columnId = findColumnOf(layout, cardId);
+  if (columnId === null) return null;
+  const ids = layout[columnId] ?? [];
+  const title = columns.find((c) => c.id === columnId)?.title ?? "this column";
+  return `position ${ids.indexOf(cardId) + 1} of ${ids.length} in ${title}`;
+}

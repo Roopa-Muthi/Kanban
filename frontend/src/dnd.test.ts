@@ -4,13 +4,15 @@ import {
   cardKey,
   columnKey,
   columnOfOver,
+  describePlacement,
   findColumnOf,
   parseCardKey,
   parseColumnKey,
   planMove,
   previewLayout,
   sameOrder,
-} from "./dnd";
+  stepLayout,
+} from "./dnd"; 
 import type { Layout } from "./dnd";
 import { makeCard, makeColumn } from "./test/factories";
 
@@ -144,5 +146,73 @@ describe("planMove", () => {
 
   it("ignores a target card that lives in another column", () => {
     expect(planMove(start, start, 10, "card-20")).toBeNull();
+  });
+});
+describe("stepLayout", () => {
+  const columnIds = [1, 2, 3];
+  const wide: Layout = { 1: [10, 11, 12], 2: [20, 21], 3: [] };
+
+  it("moves down within a column", () => {
+    expect(stepLayout(wide, columnIds, 10, "down")).toEqual({ 1: [11, 10, 12], 2: [20, 21], 3: [] });
+  });
+
+  it("moves up within a column", () => {
+    expect(stepLayout(wide, columnIds, 12, "up")).toEqual({ 1: [10, 12, 11], 2: [20, 21], 3: [] });
+  });
+
+  it("stops at the top and bottom of a column", () => {
+    expect(stepLayout(wide, columnIds, 10, "up")).toBeNull();
+    expect(stepLayout(wide, columnIds, 12, "down")).toBeNull();
+  });
+
+  it("moves right, keeping its place in the list when the next column is long enough", () => {
+    expect(stepLayout(wide, columnIds, 11, "right")).toEqual({ 1: [10, 12], 2: [20, 11, 21], 3: [] });
+  });
+
+  it("goes to the end of a shorter column", () => {
+    expect(stepLayout(wide, columnIds, 12, "right")).toEqual({ 1: [10, 11], 2: [20, 21, 12], 3: [] });
+  });
+
+  it("moves into an empty column", () => {
+    expect(stepLayout(wide, columnIds, 20, "right")).toEqual({ 1: [10, 11, 12], 2: [21], 3: [20] });
+  });
+
+  it("moves left", () => {
+    expect(stepLayout(wide, columnIds, 21, "left")).toEqual({ 1: [10, 21, 11, 12], 2: [20], 3: [] });
+  });
+
+  it("stops at the first and last column", () => {
+    expect(stepLayout(wide, columnIds, 10, "left")).toBeNull();
+    const last: Layout = { 1: [10], 2: [], 3: [30] };
+    expect(stepLayout(last, columnIds, 30, "right")).toBeNull();
+  });
+
+  it("returns null for unknown cards or columns", () => {
+    expect(stepLayout(wide, columnIds, 999, "down")).toBeNull();
+    expect(stepLayout(wide, [7, 8, 9], 10, "right")).toBeNull();
+  });
+
+  it("never mutates the layout it's given", () => {
+    const before = JSON.parse(JSON.stringify(wide)) as Layout;
+    stepLayout(wide, columnIds, 11, "right");
+    stepLayout(wide, columnIds, 11, "down");
+    expect(wide).toEqual(before);
+  });
+});
+
+describe("describePlacement", () => {
+  const columns = [makeColumn(1, [], "To do"), makeColumn(2, [], "Done")];
+
+  it("says where a card is", () => {
+    expect(describePlacement(layout, columns, 11)).toBe("position 2 of 3 in To do");
+    expect(describePlacement(layout, columns, 20)).toBe("position 1 of 1 in Done");
+  });
+
+  it("returns null for a card that isn't in the layout", () => {
+    expect(describePlacement(layout, columns, 999)).toBeNull();
+  });
+
+  it("falls back when the column isn't known", () => {
+    expect(describePlacement(layout, [], 10)).toBe("position 1 of 3 in this column");
   });
 });

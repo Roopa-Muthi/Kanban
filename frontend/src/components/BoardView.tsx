@@ -1,8 +1,8 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { FocusEvent, KeyboardEvent } from "react";
 import {
   DndContext,
   DragOverlay,
-  KeyboardSensor,
   PointerSensor,
   closestCenter,
   getFirstCollision,
@@ -17,16 +17,36 @@ import type {
   DragOverEvent,
   DragStartEvent,
 } from "@dnd-kit/core";
-import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { api, formatError } from "../api";
 import * as ops from "../boardOps";
-import { buildLayout, cardKey, parseCardKey, parseColumnKey, planMove, previewLayout } from "../dnd";
-import type { Layout } from "../dnd";
+import {
+  buildLayout,
+  cardKey,
+  describePlacement,
+  parseCardKey,
+  parseColumnKey,
+  planMove,
+  previewLayout,
+  stepLayout,
+} from "../dnd";
+import type { Layout, Step } from "../dnd";
 import type { BoardDetail, Card, CardChanges, Column, ColumnRecord } from "../types";
 import { AddForm } from "./AddForm";
 import { BoardColumn } from "./BoardColumn";
 import { CardModal } from "./CardModal";
 import { CardPreview } from "./CardPreview";
+
+const KEYBOARD_INSTRUCTIONS =
+  "Press Space or Enter to pick this card up. Use the arrow keys to move it: up and down " +
+  "within a column, left and right between columns. Press Space or Enter to drop it, or " +
+  "Escape to cancel.";
+
+const STEP_KEYS: Record<string, Step> = {
+  ArrowUp: "up",
+  ArrowDown: "down",
+  ArrowLeft: "left",
+  ArrowRight: "right",
+};
 
 interface Props {
   board: BoardDetail;
@@ -36,8 +56,8 @@ interface Props {
 
 interface DragState {
   cardId: number;
-  start: Layout; // where everything was when the drag began
-  layout: Layout; // live preview while dragging
+  start: Layout; // where everything was when the drag (or pick-up) began
+  layout: Layout; // live preview
 }
 
 interface MoveRequest {
@@ -49,7 +69,9 @@ interface MoveRequest {
 
 export function BoardView({ board, updateBoard, onResync }: Props) {
   const [actionError, setActionError] = useState<string | null>(null);
-  const [drag, setDrag] = useState<DragState | null>(null);
+  const [drag, setDrag] = useState<DragState | null>(null); // pointer drag preview
+  const [grab, setGrab] = useState<DragState | null>(null); // keyboard pick-up preview
+  const [announcement, setAnnouncement] = useState("");
   const [openCardId, setOpenCardId] = useState<number | null>(null);
   const [pending, setPending] = useState(0);
   const [resyncing, setResyncing] = useState(false);
@@ -59,7 +81,22 @@ export function BoardView({ board, updateBoard, onResync }: Props) {
   const sensors = useSensors(
     // A small distance means a plain click on the handle never starts a drag.
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  // A pick-up is only valid while focus stays on the card, so any pointer press cancels it.
+  const grabbing = grab !== null;
+  useEffect(() => {
+    if (!grabbing) return;
+    const cancel = () => {
+      setGrab(null);
+      setAnnouncement("Move cancelled.");
+    };
+    document.addEventListener("pointerdown", cancel, true);
+    return () => document.removeEventListener("pointerdown", cancel, true);
+  }, [grabbing]);
+
+  const cardsById = new Map(
+    board.columns.flatMap((c) => c.cards).map((c): [number, Card] => [c.id, c]),
   );
 
   // Prefer the card under the pointer. If the pointer is over a column's empty space, pick the
@@ -165,6 +202,7 @@ export function BoardView({ board, updateBoard, onResync }: Props) {
       } catch (err) {
         epochRef.current += 1;
         setResyncing(true);
+        setGrab(null); // a pick-up built from the old board would be stale after the reload
         let message = `Couldn't save the move. ${formatError(err)}`;
         try {
           await onResync();
@@ -180,7 +218,7 @@ export function BoardView({ board, updateBoard, onResync }: Props) {
     });
   }
 
-  // ---------- drag and drop ----------
+  // ---------- pointer drag and drop ----------
 
   function handleDragStart({ active }: DragStartEvent) {
     const cardId = parseCardKey(active.id);
@@ -224,20 +262,97 @@ export function BoardView({ board, updateBoard, onResync }: Props) {
     setDrag(null);
   }
 
-  // While dragging, show the preview layout instead of the saved board.
-  const cardsById = new Map(
-    board.columns.flatMap((c) => c.cards).map((c): [number, Card] => [c.id, c]),
-  );
-  const columns: Column[] = drag
+  // ---------- keyboard: pick up, step, drop ----------
+
+  function cancelGrab(message: string) {
+    setGrab(null);
+    setAnnouncement(message);
+  }
+
+  function pickUp(card: Card) {
+    if (drag || resyncing) return;
+    const start = buildLayout(board.columns);
+    setGrab({ cardId: card.id, start, layout: start });
+    setActionError(null);
+    setAnnouncement(
+      `Picked up ${card.title}, ${describePlacement(start, board.columns, card.id) ?? "on the board"}. ` +
+        "Use the arrow keys to move it, Space to drop it, Escape to cancel.",
+    );
+  }
+
+  function stepGrab(step: Step) {
+    if (!grab) return;
+    const columnIds = board.columns.map((c) => c.id);
+    const next = stepLayout(grab.layout, columnIds, grab.cardId, step);
+    if (!next) {
+      setAnnouncement(`Can't move any further ${step}.`);
+      return;
+    }
+    setGrab({ ...grab, layout: next });
+    setAnnouncement(
+      `Moved to ${describePlacement(next, board.columns, grab.cardId) ?? "a new place"}.`,
+    );
+  }
+
+  function dropGrab() {
+    const current = grab;
+    if (!current) return;
+    setGrab(null);
+    const title = cardsById.get(current.cardId)?.title ?? "card";
+    const plan = planMove(current.start, current.layout, current.cardId, cardKey(current.cardId));
+    if (!plan) {
+      setAnnouncement(`Dropped ${title}. Nothing changed.`);
+      return;
+    }
+    updateBoard((b) => ops.placeCard(b, current.cardId, plan.columnId, plan.ids)); // optimistic
+    enqueueMove({
+      cardId: current.cardId,
+      columnId: plan.columnId,
+      beforeId: plan.beforeId,
+      afterId: plan.afterId,
+    });
+    const where = describePlacement(current.layout, board.columns, current.cardId);
+    setAnnouncement(`Dropped ${title} at ${where ?? "its new place"}.`);
+  }
+
+  function handleHandleKeyDown(card: Card, e: KeyboardEvent<HTMLButtonElement>) {
+    if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      if (grab?.cardId === card.id) dropGrab();
+      else pickUp(card);
+      return;
+    }
+    if (grab?.cardId !== card.id) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      cancelGrab("Move cancelled.");
+      return;
+    }
+    const step = STEP_KEYS[e.key];
+    if (step) {
+      e.preventDefault();
+      stepGrab(step);
+    }
+  }
+
+  // relatedTarget is null when the button was merely re-rendered or moved, which is not the
+  // user leaving. Only a real jump to another element (Tab) cancels the pick-up.
+  function handleHandleBlur(card: Card, e: FocusEvent<HTMLButtonElement>) {
+    if (grab?.cardId === card.id && e.relatedTarget !== null) cancelGrab("Move cancelled.");
+  }
+
+  // While dragging or holding a card, show the preview layout instead of the saved board.
+  const preview = drag ?? grab;
+  const columns: Column[] = preview
     ? board.columns.map((column) => ({
         ...column,
-        cards: (drag.layout[column.id] ?? [])
+        cards: (preview.layout[column.id] ?? [])
           .map((id) => cardsById.get(id))
           .filter((c): c is Card => c !== undefined),
       }))
     : board.columns;
   const draggedCard = drag ? cardsById.get(drag.cardId) : undefined;
-  // The dialog reads the saved board, never the drag preview.
+  // The dialog reads the saved board, never a preview.
   const openCard = openCardId === null ? undefined : cardsById.get(openCardId);
 
   return (
@@ -252,6 +367,14 @@ export function BoardView({ board, updateBoard, onResync }: Props) {
         {pending > 0 ? "Saving…" : ""}
       </p>
 
+      <p className="keyboard-hint">
+        Keyboard: focus a card's ⠿ handle, press Space to pick it up, use the arrow keys to move
+        it, then Space to drop it. Escape cancels.
+      </p>
+      <div className="sr-only" aria-live="assertive" aria-atomic="true">
+        {announcement}
+      </div>
+
       {board.columns.length === 0 && (
         <p className="empty">This board has no columns yet. Add the first one below.</p>
       )}
@@ -259,6 +382,7 @@ export function BoardView({ board, updateBoard, onResync }: Props) {
       <DndContext
         sensors={sensors}
         collisionDetection={collisionDetection}
+        accessibility={{ screenReaderInstructions: { draggable: KEYBOARD_INSTRUCTIONS } }}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
@@ -270,12 +394,15 @@ export function BoardView({ board, updateBoard, onResync }: Props) {
               key={column.id}
               column={column}
               dragDisabled={resyncing}
+              grabbedCardId={grab?.cardId ?? null}
               onRenameColumn={renameColumn}
               onDeleteColumn={deleteColumn}
               onAddCard={addCard}
               onRenameCard={renameCard}
               onOpenCard={(card) => setOpenCardId(card.id)}
               onDeleteCard={deleteCard}
+              onHandleKeyDown={handleHandleKeyDown}
+              onHandleBlur={handleHandleBlur}
             />
           ))}
           <div className="add-column">

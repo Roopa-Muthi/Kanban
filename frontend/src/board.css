@@ -286,3 +286,34 @@
   font-size: 0.75rem;
   color: #6b778c;
 }
+.card.grabbed {
+  outline: 2px solid #0b5fff;
+  box-shadow: 0 6px 14px rgba(9, 30, 66, 0.3);
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #0b5fff;
+  outline-offset: 2px;
+}
+
+.keyboard-hint {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  color: #6b778c;
+}
+
+/* Visually hidden, but still read by screen readers. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
