@@ -10,18 +10,29 @@ User = get_user_model()
 # Relation fields that can only point at objects the current user owns.
 # Because the queryset is scoped, someone else's id and a nonexistent id
 # produce the same "Invalid pk" error, so nothing leaks.
+# The empty queryset given to super().__init__ tells the schema generator which model each
+# field points at, and makes the field accept nothing if get_queryset is ever removed.
 class OwnBoardField(serializers.PrimaryKeyRelatedField):
+    def __init__(self, **kwargs):
+        super().__init__(queryset=Board.objects.none(), **kwargs)
+
     def get_queryset(self):
         return Board.objects.filter(owner=self.context["request"].user)
 
 
 class OwnColumnField(serializers.PrimaryKeyRelatedField):
+    def __init__(self, **kwargs):
+        super().__init__(queryset=Column.objects.none(), **kwargs)
+
     def get_queryset(self):
         return Column.objects.filter(board__owner=self.context["request"].user)
 
 
 class SelfOnlyAssigneeField(serializers.PrimaryKeyRelatedField):
     # No memberships yet, so the only valid assignee is yourself.
+    def __init__(self, **kwargs):
+        super().__init__(queryset=User.objects.none(), **kwargs)
+
     def get_queryset(self):
         return User.objects.filter(pk=self.context["request"].user.pk)
 

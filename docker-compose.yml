@@ -14,6 +14,23 @@ services:
     image: redis:7
     ports:
       - "6379:6379"
+  backend:
+    build: ./backend
+    profiles: ["tools"]
+    working_dir: /repo/backend
+    volumes:
+      - .:/repo
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      SECRET_KEY: docker-dev-key-not-secret
+      DEBUG: "True"
+      DB_NAME: kanban
+      DB_USER: kanban
+      DB_PASSWORD: kanban
+      DB_HOST: db
+      DB_PORT: "5432"
+    depends_on:
+      - db
 
 volumes:
   pgdata:

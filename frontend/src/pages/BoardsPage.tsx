@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { api, formatError } from "../api";
 import { useAuth } from "../auth/useAuth";
-import type { Board } from "../types";
+import type { Board, BoardRequest } from "../types";
 
 type Status = "loading" | "error" | "ready";
 
@@ -38,7 +38,7 @@ export function BoardsPage() {
     setCreating(true);
     setActionError(null);
     try {
-      const board = await api.post<Board>("/boards", { name: trimmed });
+      const board = await api.post<Board>("/boards", { name: trimmed } satisfies BoardRequest);
       setBoards((prev) => [board, ...prev]); // the API lists newest first
       setName("");
     } catch (err) {
@@ -115,8 +115,8 @@ export function BoardsPage() {
             >
               <Link to={`/boards/${board.id}`}>{board.name}</Link>
               <button onClick={() => void handleDelete(board)} aria-label={`Delete board ${board.name}`}>
-  Delete
-</button>
+                Delete
+              </button>
             </li>
           ))}
         </ul>

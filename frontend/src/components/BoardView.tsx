@@ -30,7 +30,17 @@ import {
   stepLayout,
 } from "../dnd";
 import type { Layout, Step } from "../dnd";
-import type { BoardDetail, Card, CardChanges, Column, ColumnRecord } from "../types";
+import type {
+  BoardDetail,
+  Card,
+  CardChanges,
+  CardRequest,
+  Column,
+  ColumnChanges,
+  ColumnRecord,
+  ColumnRequest,
+  MoveCardRequest,
+} from "../types";
 import { AddForm } from "./AddForm";
 import { BoardColumn } from "./BoardColumn";
 import { CardModal } from "./CardModal";
@@ -138,12 +148,18 @@ export function BoardView({ board, updateBoard, onResync }: Props) {
 
   // Add and rename throw on failure, so the form that triggered them shows the error.
   async function addColumn(title: string) {
-    const col = await api.post<ColumnRecord>("/columns", { board: board.id, title });
+    const col = await api.post<ColumnRecord>(
+      "/columns",
+      { board: board.id, title } satisfies ColumnRequest,
+    );
     updateBoard((b) => ops.addColumn(b, col));
   }
 
   async function renameColumn(columnId: number, title: string) {
-    const col = await api.patch<ColumnRecord>(`/columns/${columnId}`, { title });
+    const col = await api.patch<ColumnRecord>(
+      `/columns/${columnId}`,
+      { title } satisfies ColumnChanges,
+    );
     updateBoard((b) => ops.renameColumn(b, col));
   }
 
@@ -161,12 +177,12 @@ export function BoardView({ board, updateBoard, onResync }: Props) {
   }
 
   async function addCard(columnId: number, title: string) {
-    const card = await api.post<Card>("/cards", { column: columnId, title });
+    const card = await api.post<Card>("/cards", { column: columnId, title } satisfies CardRequest);
     updateBoard((b) => ops.addCard(b, card));
   }
 
   async function renameCard(cardId: number, title: string) {
-    const card = await api.patch<Card>(`/cards/${cardId}`, { title });
+    const card = await api.patch<Card>(`/cards/${cardId}`, { title } satisfies CardChanges);
     updateBoard((b) => ops.mergeCardFields(b, card));
   }
 
@@ -197,7 +213,7 @@ export function BoardView({ board, updateBoard, onResync }: Props) {
           column_id: move.columnId,
           before_id: move.beforeId,
           after_id: move.afterId,
-        });
+        } satisfies MoveCardRequest);
         updateBoard((b) => ops.syncCard(b, moved));
       } catch (err) {
         epochRef.current += 1;

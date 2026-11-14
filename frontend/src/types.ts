@@ -1,64 +1,30 @@
-export interface User {
-  id: number;
-  username: string;
-  email: string;
-}
+import type { components, paths } from "./apiSchema";
 
-export interface LoginResponse {
-  access: string;
-  refresh: string;
-}
+// Everything here comes from the generated schema. Don't hand-write API shapes: run
+// `npm run gen:api` after the backend changes and let the compiler find what broke.
 
-export interface RefreshResponse {
-  access: string;
-}
+type Schemas = components["schemas"];
 
-export interface RegisterPayload {
-  username: string;
-  email: string;
-  password: string;
-}
-export interface Board {
-  id: number;
-  name: string;
-  created_at: string;
-}
+// The JSON body of an endpoint's response, picked by path, method and status code.
+type JsonBody<T> = T extends { content: { "application/json": infer B } } ? B : never;
 
-export interface Card {
-  id: number;
-  column: number;
-  title: string;
-  description: string;
-  position: number;
-  created_by: number;
-  assignee: number | null;
-  due_date: string | null;
-  version: number;
-  created_at: string;
-  updated_at: string;
-}
+// What the server returns
+export type User = Schemas["User"];
+export type Board = Schemas["Board"];
+export type BoardDetail = Schemas["BoardDetail"];
+export type Column = Schemas["ColumnWithCards"]; // a column with its cards, as a board returns it
+export type ColumnRecord = Schemas["Column"]; // a column on its own, as /columns returns it
+export type Card = Schemas["Card"];
 
-export interface Column {
-  id: number;
-  title: string;
-  position: number;
-  cards: Card[];
-}
+// What the server accepts
+export type BoardRequest = Schemas["BoardRequest"];
+export type ColumnRequest = Schemas["ColumnRequest"];
+export type ColumnChanges = Schemas["PatchedColumnRequest"];
+export type CardRequest = Schemas["CardRequest"];
+export type CardChanges = Schemas["PatchedCardRequest"];
+export type MoveCardRequest = Schemas["MoveCardRequest"];
+export type RegisterPayload = Schemas["RegisterRequest"];
 
-export interface BoardDetail extends Board {
-  columns: Column[];
-}
-// What POST/PATCH /columns returns (no cards)
-export interface ColumnRecord {
-  id: number;
-  board: number;
-  title: string;
-  position: number;
-}
-// The fields the card dialog can change; PATCH accepts any subset.
-export interface CardChanges {
-  title?: string;
-  description?: string;
-  due_date?: string | null;
-  assignee?: number | null;
-}
+// Token responses, picked by endpoint
+export type LoginResponse = JsonBody<paths["/auth/login"]["post"]["responses"][200]>;
+export type RefreshResponse = JsonBody<paths["/auth/refresh"]["post"]["responses"][200]>;
