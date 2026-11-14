@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api";
 import { LoginPage } from "./LoginPage";
 
@@ -28,7 +28,9 @@ function renderPage() {
 beforeEach(() => {
   vi.resetAllMocks();
 });
-
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 describe("LoginPage", () => {
   it("sends the credentials", async () => {
     const user = userEvent.setup();
@@ -62,5 +64,16 @@ describe("LoginPage", () => {
     renderPage();
     await submit(user);
     expect(await screen.findByRole("button", { name: "Logging in…" })).toBeDisabled();
+  });
+    it("hides the demo login hint by default", () => {
+    renderPage();
+    expect(screen.queryByText(/demo account/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the demo login hint when enabled", () => {
+    vi.stubEnv("VITE_SHOW_DEMO_LOGIN", "true");
+    renderPage();
+    expect(screen.getByText(/demo account/i)).toBeInTheDocument();
+    expect(screen.getByText("kanban-demo-2026")).toBeInTheDocument();
   });
 });

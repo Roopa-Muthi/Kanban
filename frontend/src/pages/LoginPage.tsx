@@ -12,6 +12,9 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Switched on only for the deployed demo (set VITE_SHOW_DEMO_LOGIN=true in the host's settings).
+  const showDemoLogin = import.meta.env.VITE_SHOW_DEMO_LOGIN === "true";
+
   if (user) return <Navigate to="/" replace />;
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -48,6 +51,11 @@ export function LoginPage() {
       <p>
         No account? <Link to="/register">Register</Link>
       </p>
+      {showDemoLogin && (
+        <p style={{ fontSize: "0.85rem", color: "#5e6c84" }}>
+          Just looking around? Use the demo account: <code>demo</code> / <code>kanban-demo-2026</code>
+        </p>
+      )}
     </main>
   );
 }
